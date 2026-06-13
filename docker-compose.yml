@@ -1,6 +1,8 @@
 services:
   db:
-    image: postgis/postgis:16-3.4
+    # arm64-native PostGIS (official postgis/postgis is amd64-only and emulates on Apple Silicon).
+    # imresamu/postgis tracks upstream PostGIS and publishes linux/arm64 + linux/amd64.
+    image: imresamu/postgis:16-3.4
     environment:
       POSTGRES_DB: netatlas
       POSTGRES_USER: netatlas

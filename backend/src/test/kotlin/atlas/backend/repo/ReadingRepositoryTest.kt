@@ -19,8 +19,9 @@ class ReadingRepositoryTest {
     companion object {
         @Container
         @JvmStatic
+        // arm64-native PostGIS (official postgis/postgis is amd64-only → QEMU emulation on Apple Silicon).
         val postgres: PostgreSQLContainer<*> = PostgreSQLContainer(
-            DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"),
+            DockerImageName.parse("imresamu/postgis:16-3.4").asCompatibleSubstituteFor("postgres"),
         )
     }
 
