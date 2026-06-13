@@ -1,0 +1,37 @@
+# Gradle / Kotlin
+.gradle/
+build/
+**/build/
+local.properties
+*.hprof
+.kotlin/
+
+# Android
+*.apk
+*.aab
+*.keystore
+captures/
+
+# Xcode / iOS
+iosApp/build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+Pods/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Backend / env
+.env
+.env.local
+*.dump
+backend/db/data/
+
+# OS
+.DS_Store
+
+# OpenCelliD data dumps (large)
+ingest-opencellid/data/
