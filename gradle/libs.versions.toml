@@ -5,7 +5,7 @@ ktor = "3.0.1"
 exposed = "0.56.0"
 postgres = "42.7.4"
 h3 = "4.1.1"
-testcontainers = "1.20.4"
+testcontainers = "1.21.3"
 logback = "1.5.12"
 junit = "5.11.3"
 
