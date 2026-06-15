@@ -31,6 +31,9 @@ Pods/
 *.dump
 backend/db/data/
 
+# Local-only Docker Compose overrides (e.g. remapped DB port)
+docker-compose.override.yml
+
 # OS
 .DS_Store
 

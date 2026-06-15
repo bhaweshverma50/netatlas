@@ -1,6 +1,7 @@
 package atlas.backend.repo
 
 import atlas.aggregate.Aggregation
+import atlas.aggregate.ModeledCoverage
 import atlas.backend.db.Database
 import atlas.backend.geo.H3
 import atlas.ingest.AnomalyFilter
@@ -8,8 +9,13 @@ import atlas.model.CoverageClass
 import atlas.model.HexAggregate
 import atlas.model.NetworkType
 import atlas.model.SignalReading
+import atlas.model.Source
 import java.sql.Connection
 import java.sql.Types
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** Outcome of an [ReadingRepository.ingest] call. */
 data class IngestResult(val accepted: Int, val rejected: Int)
@@ -30,6 +36,9 @@ class ReadingRepository(private val db: Database) {
 
     /** Key identifying a single aggregate row. */
     private data class HexKey(val h3: Long, val mcc: Int, val mnc: Int, val networkType: String)
+
+    /** Identity of a hex for blending crowd vs modeled coverage. */
+    private data class ModeledKey(val h3: Long, val mcc: Int, val mnc: Int, val networkType: NetworkType)
 
     fun ingest(readings: List<SignalReading>): IngestResult {
         var accepted = 0
@@ -83,6 +92,11 @@ class ReadingRepository(private val db: Database) {
 
         return db.transaction {
             val conn = connection.connection as Connection
+            val crowd = ArrayList<HexAggregate>()
+            // Keys (h3 cell, mcc, mnc, networkType) already covered by crowd data; modeled
+            // hexes for these keys are suppressed so crowd always wins.
+            val crowdKeys = HashSet<ModeledKey>()
+
             conn.prepareStatement(sql).use { ps ->
                 var i = 1
                 ps.setDouble(i++, minLng)
@@ -93,15 +107,19 @@ class ReadingRepository(private val db: Database) {
                 if (mnc != null) ps.setInt(i++, mnc)
                 if (networkType != null) ps.setString(i++, networkType.name)
 
-                val out = ArrayList<HexAggregate>()
                 ps.executeQuery().use { rs ->
                     while (rs.next()) {
-                        out += HexAggregate(
-                            h3 = H3.toAddress(rs.getLong("h3_r10")),
+                        val cell = rs.getLong("h3_r10")
+                        val rowMcc = rs.getInt("mcc")
+                        val rowMnc = rs.getInt("mnc")
+                        val rowType = NetworkType.valueOf(rs.getString("network_type"))
+                        crowdKeys += ModeledKey(cell, rowMcc, rowMnc, rowType)
+                        crowd += HexAggregate(
+                            h3 = H3.toAddress(cell),
                             resolution = rs.getInt("resolution"),
-                            mcc = rs.getInt("mcc"),
-                            mnc = rs.getInt("mnc"),
-                            networkType = NetworkType.valueOf(rs.getString("network_type")),
+                            mcc = rowMcc,
+                            mnc = rowMnc,
+                            networkType = rowType,
                             sampleCount = rs.getInt("sample_count"),
                             meanDbm = rs.getDouble("mean_dbm"),
                             medianDbm = rs.getDouble("median_dbm"),
@@ -110,12 +128,131 @@ class ReadingRepository(private val db: Database) {
                             coverageClass = CoverageClass.valueOf(rs.getString("coverage_class")),
                             centerLat = rs.getDouble("center_lat"),
                             centerLng = rs.getDouble("center_lng"),
+                            source = Source.CROWD,
                         )
                     }
                 }
-                out
+            }
+
+            val modeled = modeledHexes(conn, minLng, minLat, maxLng, maxLat, mcc, mnc, networkType, crowdKeys)
+            crowd + modeled
+        }
+    }
+
+    /**
+     * Synthesizes modeled coverage hexes from `cell_towers` within the bbox so areas near a
+     * tower but without crowd data aren't blank.
+     *
+     * For each tower we map its `radio` to a [NetworkType], take a bounded k-ring of H3 cells
+     * around it ([MAX_K] caps the patch size — a documented simplification keeping the response
+     * bounded rather than tiling the tower's full range), and run each in-bbox cell through the
+     * shared [ModeledCoverage.estimate]. Cells already covered by crowd ([crowdKeys]) are
+     * skipped; for the rest we keep the best (highest-dBm) estimate per (cell, mcc, mnc, type).
+     */
+    private fun modeledHexes(
+        conn: Connection,
+        minLng: Double,
+        minLat: Double,
+        maxLng: Double,
+        maxLat: Double,
+        mcc: Int?,
+        mnc: Int?,
+        networkType: NetworkType?,
+        crowdKeys: Set<ModeledKey>,
+    ): List<HexAggregate> {
+        val sql = buildString {
+            append(
+                """
+                SELECT radio, mcc, mnc, lat, lng, range_m, samples
+                FROM cell_towers
+                WHERE geom::geometry && ST_MakeEnvelope(?, ?, ?, ?, 4326)
+                """.trimIndent(),
+            )
+            if (mcc != null) append(" AND mcc = ?")
+            if (mnc != null) append(" AND mnc = ?")
+        }
+
+        // Best estimate kept per modeled key.
+        val best = LinkedHashMap<ModeledKey, HexAggregate>()
+
+        conn.prepareStatement(sql).use { ps ->
+            var i = 1
+            ps.setDouble(i++, minLng)
+            ps.setDouble(i++, minLat)
+            ps.setDouble(i++, maxLng)
+            ps.setDouble(i++, maxLat)
+            if (mcc != null) ps.setInt(i++, mcc)
+            if (mnc != null) ps.setInt(i++, mnc)
+
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    val mappedType = radioToNetworkType(rs.getString("radio"))
+                    // Network filter applies to the modeled side too.
+                    if (networkType != null && mappedType != networkType) continue
+
+                    val towerMcc = rs.getInt("mcc")
+                    val towerMnc = rs.getInt("mnc")
+                    val towerLat = rs.getDouble("lat")
+                    val towerLng = rs.getDouble("lng")
+                    val rangeM = rs.getInt("range_m").let { if (rs.wasNull()) DEFAULT_RANGE_M else it }
+                    val samples = rs.getInt("samples").let { if (rs.wasNull()) 0 else it }
+
+                    val cell0 = H3.cell(towerLat, towerLng, 10)
+                    val k = (rangeM / HEX_EDGE_M).toInt().coerceIn(1, MAX_K)
+                    for (cell in H3.kRing(cell0, k)) {
+                        val (centerLat, centerLng) = H3.center(cell)
+                        // Only emit cells whose center is inside the requested bbox.
+                        if (centerLng < minLng || centerLng > maxLng || centerLat < minLat || centerLat > maxLat) continue
+
+                        val key = ModeledKey(cell, towerMcc, towerMnc, mappedType)
+                        if (key in crowdKeys) continue
+
+                        val dist = haversineMeters(centerLat, centerLng, towerLat, towerLng)
+                        val est = ModeledCoverage.estimate(dist, rangeM.toDouble(), samples)
+                        val existing = best[key]
+                        if (existing != null && existing.meanDbm >= est.meanDbm) continue
+
+                        best[key] = HexAggregate(
+                            h3 = H3.toAddress(cell),
+                            resolution = 10,
+                            mcc = towerMcc,
+                            mnc = towerMnc,
+                            networkType = mappedType,
+                            sampleCount = 0,
+                            meanDbm = est.meanDbm,
+                            medianDbm = est.meanDbm,
+                            stddev = 0.0,
+                            confidence = est.confidence,
+                            coverageClass = est.coverageClass,
+                            centerLat = centerLat,
+                            centerLng = centerLng,
+                            source = Source.OPENCELLID,
+                        )
+                    }
+                }
             }
         }
+
+        return best.values.toList()
+    }
+
+    /** Maps an OpenCelliD `radio` tag to a [NetworkType]; unknown tags fall back to [NetworkType.UNKNOWN]. */
+    private fun radioToNetworkType(radio: String?): NetworkType = when (radio?.trim()?.uppercase()) {
+        "LTE" -> NetworkType.LTE
+        "NR" -> NetworkType.NR_SA
+        "UMTS", "WCDMA" -> NetworkType.UMTS
+        "GSM" -> NetworkType.GSM
+        else -> NetworkType.UNKNOWN
+    }
+
+    /** Great-circle distance in meters between two lat/lng points (R = 6371000 m). */
+    private fun haversineMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val r = 6_371_000.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2)
+        return r * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
     fun carriers(): List<CarrierInfo> = db.transaction {
@@ -255,6 +392,21 @@ class ReadingRepository(private val db: Database) {
     }
 
     private companion object {
+        /** Default nominal tower range (m) when OpenCelliD leaves range_m blank. */
+        const val DEFAULT_RANGE_M = 1000
+
+        /** Approx. H3 resolution-10 edge length (m); used to size the modeled k-ring patch. */
+        const val HEX_EDGE_M = 65.0
+
+        /**
+         * Hard cap on the modeled k-ring radius per tower, keeping the response bounded.
+         * Raised from 4 to 7 so each tower's modeled patch is wider and neighboring
+         * towers' patches overlap into continuous coverage rather than isolated blobs.
+         * Note: the modeled cell count per tower grows ~k², so the response size grows
+         * with it — 7 stays comfortably bounded for the demo bbox/tower density.
+         */
+        const val MAX_K = 7
+
         val INSERT_READING = """
             INSERT INTO signal_readings (
                 device_id, ts, lat, lng, geom, loc_accuracy_m, speed_mps, is_moving,

@@ -33,4 +33,7 @@ object H3 {
 
     /** Resolution of a cell. */
     fun resolution(cell: Long): Int = core.getResolution(cell)
+
+    /** All cells within [k] grid steps of [cell] (the cell itself plus its k-ring disk). */
+    fun kRing(cell: Long, k: Int): List<Long> = core.gridDisk(cell, k)
 }

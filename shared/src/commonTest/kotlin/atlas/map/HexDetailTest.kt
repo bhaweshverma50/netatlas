@@ -2,6 +2,7 @@ package atlas.map
 
 import atlas.model.CoverageClass
 import atlas.model.NetworkType
+import atlas.model.Source
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -37,6 +38,26 @@ class HexDetailTest {
         assertEquals(404, detail.mcc)
         assertEquals(45, detail.mnc)
         assertEquals(NetworkType.LTE, detail.networkType)
+        // No `source` key -> defaults to crowd-sourced for back-compat.
+        assertEquals(Source.CROWD, detail.source)
+    }
+
+    @Test
+    fun parses_modeled_source() {
+        val detail = HexDetail.fromProperties(full + ("source" to "OPENCELLID"))!!
+        assertEquals(Source.OPENCELLID, detail.source)
+    }
+
+    @Test
+    fun missing_source_defaults_to_crowd() {
+        val detail = HexDetail.fromProperties(full - "source")!!
+        assertEquals(Source.CROWD, detail.source)
+    }
+
+    @Test
+    fun unknown_source_falls_back_to_crowd() {
+        val detail = HexDetail.fromProperties(full + ("source" to "WAT"))!!
+        assertEquals(Source.CROWD, detail.source)
     }
 
     @Test

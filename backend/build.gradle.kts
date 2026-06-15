@@ -53,6 +53,16 @@ tasks.register<JavaExec>("seed") {
     classpath = sourceSets["main"].runtimeClasspath
 }
 
+// Loads OpenCelliD-format cell-tower CSV into the cell_towers table.
+// Connects directly to PostGIS via JDBC_URL/DB_USER/DB_PASSWORD (same defaults as the app).
+// CSV path: first program arg, then env OPENCELLID_CSV, then ingest-opencellid/sample-bengaluru.csv.
+tasks.register<JavaExec>("importOpenCelliD") {
+    group = "application"
+    description = "Imports OpenCelliD-format cell-tower data into the cell_towers table"
+    mainClass.set("atlas.backend.ingest.ImportMainKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
+
 tasks.named<Test>("test") {
     useJUnitPlatform()
 

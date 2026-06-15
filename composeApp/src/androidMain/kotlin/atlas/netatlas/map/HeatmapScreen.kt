@@ -50,6 +50,7 @@ import atlas.net.ServerUrl
 import atlas.model.Carrier
 import atlas.model.CoverageClass
 import atlas.model.NetworkType
+import atlas.model.Source
 import kotlinx.coroutines.flow.Flow
 import kotlin.math.roundToInt
 
@@ -340,23 +341,32 @@ private fun Legend() {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            COVERAGE_COLORS.forEach { (name, color) ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(color),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(name, fontSize = 11.sp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                COVERAGE_COLORS.forEach { (name, color) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(color),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(name, fontSize = 11.sp)
+                    }
                 }
             }
+            Text(
+                text = "Dashed = modeled (OpenCelliD) · solid = measured",
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -393,6 +403,7 @@ private fun HexDetailSheet(detail: HexDetail, carriers: List<Carrier>) {
     val carrierName = carriers
         .firstOrNull { it.mcc == detail.mcc && it.mnc == detail.mnc }
         ?.carrierName
+    val modeled = detail.source == Source.OPENCELLID
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -400,11 +411,26 @@ private fun HexDetailSheet(detail: HexDetail, carriers: List<Carrier>) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text("Hex coverage", style = MaterialTheme.typography.titleLarge)
+        // Provenance line: measured vs. modeled.
+        Text(
+            text = if (modeled) {
+                "Modeled estimate · OpenCelliD"
+            } else {
+                "Crowd-sourced · ${detail.sampleCount} samples"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.height(4.dp))
         DetailRow("Mean signal", "${detail.meanDbm.roundToInt()} dBm")
         DetailRow("Median signal", "${detail.medianDbm.roundToInt()} dBm")
         DetailRow("Coverage", detail.coverageClass.toLabel())
-        DetailRow("Samples", detail.sampleCount.toString())
+        if (modeled) {
+            // Modeled hexes carry no real measurements (sampleCount == 0).
+            DetailRow("Samples", "Modeled (no measurements yet)")
+        } else {
+            DetailRow("Samples", detail.sampleCount.toString())
+        }
         DetailRow("Confidence", "${(detail.confidence * 100).roundToInt()}%")
         DetailRow(
             "Carrier",
