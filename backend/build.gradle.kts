@@ -44,6 +44,15 @@ dependencies {
     testImplementation(libs.junit.jupiter)
 }
 
+// Dev-only seeder: posts ~500 synthetic readings to a running server (:8080).
+// Server must be up first (`./gradlew :backend:run`). Target URL via env NETATLAS_URL.
+tasks.register<JavaExec>("seed") {
+    group = "application"
+    description = "Generates synthetic readings and POSTs them to a running backend"
+    mainClass.set("atlas.backend.dev.SeedKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
+
 tasks.named<Test>("test") {
     useJUnitPlatform()
 
