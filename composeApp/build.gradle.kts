@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.compose)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -29,8 +30,24 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.room.runtime)
+            implementation(libs.room.ktx)
+        }
+        androidInstrumentedTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.androidx.test.runner)
+            implementation(libs.androidx.test.core)
+            implementation(libs.androidx.test.ext.junit)
+            implementation(libs.room.testing)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
+}
+
+// Room codegen for the Android target. In a KMP module the KSP configuration is
+// target-specific (kspAndroid), NOT the plain `ksp` config used by pure-Android modules.
+dependencies {
+    add("kspAndroid", libs.room.compiler)
 }
 
 android {
@@ -45,6 +62,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
