@@ -47,15 +47,12 @@ dependencies {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 
-    // Testcontainers needs to reach the Docker daemon. The Gradle test JVM does not
-    // inherit the login shell environment, so resolve the active docker-context
-    // endpoint at configuration time and hand it to the test JVM as DOCKER_HOST
-    // (unless the developer already exported one).
-    //
-    // The shaded docker-java in Testcontainers 1.20.x defaults to an old API version
-    // that modern Docker daemons (server min API >= 1.40) reject with HTTP 400 on
-    // every ping. Pin a compatible API version so the daemon is recognised. Honour an
-    // externally set DOCKER_API_VERSION if present.
+    // Testcontainers must reach the Docker daemon. The Gradle test JVM doesn't inherit
+    // the login shell, and Docker Desktop on macOS uses a non-standard socket
+    // (~/.docker/run/docker.sock) that auto-detection misses — so resolve the active
+    // docker-context endpoint at configuration time and pass it as DOCKER_HOST (unless
+    // one is already exported). Verified load-bearing: without this the tests fail with
+    // "Could not find a valid Docker environment".
     if (System.getenv("DOCKER_HOST") == null) {
         val dockerHost = runCatching {
             val proc = ProcessBuilder(
@@ -67,9 +64,9 @@ tasks.named<Test>("test") {
         }.getOrNull()
         if (dockerHost != null) environment("DOCKER_HOST", dockerHost)
     }
-    // docker-java reads the negotiated API version from the `api.version` system
-    // property (and DOCKER_API_VERSION env). Modern Docker daemons reject the old
-    // default v1.32 with HTTP 400, so pin a version the daemon accepts.
+    // docker-java reads the negotiated API version from the `api.version` system property
+    // (and DOCKER_API_VERSION env). Modern daemons reject the old default with HTTP 400,
+    // so pin a version the daemon accepts. Honour an externally set DOCKER_API_VERSION.
     if (System.getenv("DOCKER_API_VERSION") == null) {
         systemProperty("api.version", "1.44")
         environment("DOCKER_API_VERSION", "1.44")
