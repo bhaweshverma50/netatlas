@@ -2,6 +2,7 @@ package atlas.map
 
 import atlas.model.Carrier
 import atlas.model.HexAggregate
+import atlas.net.ApiClient.Companion.EMPTY_FEATURE_COLLECTION
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,10 @@ class MapViewModel(
 ) {
     private val _hexes = MutableStateFlow<List<HexAggregate>>(emptyList())
     val hexes: StateFlow<List<HexAggregate>> = _hexes.asStateFlow()
+
+    private val _geoJson = MutableStateFlow(EMPTY_FEATURE_COLLECTION)
+    /** The heatmap as a raw GeoJSON FeatureCollection string, for the MapLibre fill layer. */
+    val geoJson: StateFlow<String> = _geoJson.asStateFlow()
 
     private val _filter = MutableStateFlow(HexFilter())
     val filter: StateFlow<HexFilter> = _filter.asStateFlow()
@@ -64,7 +69,9 @@ class MapViewModel(
         loadJob = scope.launch {
             _loading.value = true
             try {
+                // Load both the typed aggregates and the GeoJSON for the map off the same trigger.
                 _hexes.value = repo.hexes(bbox, _filter.value)
+                _geoJson.value = repo.hexesGeoJson(bbox, _filter.value)
             } finally {
                 _loading.value = false
             }

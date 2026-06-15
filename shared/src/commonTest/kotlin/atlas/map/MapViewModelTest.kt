@@ -28,17 +28,26 @@ class MapViewModelTest {
     private class FakeHexRepository(
         private val hexResult: List<HexAggregate>,
         private val carrierResult: List<Carrier> = emptyList(),
+        private val geoJsonResult: String = """{"type":"FeatureCollection","features":[]}""",
     ) : HexRepository(api = throwingApi()) {
         var hexCalls = 0
         var lastBbox: BoundingBox? = null
         var lastFilter: HexFilter? = null
         var carrierCalls = 0
+        var geoJsonCalls = 0
 
         override suspend fun hexes(bbox: BoundingBox, filter: HexFilter): List<HexAggregate> {
             hexCalls++
             lastBbox = bbox
             lastFilter = filter
             return hexResult
+        }
+
+        override suspend fun hexesGeoJson(bbox: BoundingBox, filter: HexFilter): String {
+            geoJsonCalls++
+            lastBbox = bbox
+            lastFilter = filter
+            return geoJsonResult
         }
 
         override suspend fun carriers(): List<Carrier> {
@@ -67,6 +76,22 @@ class MapViewModelTest {
 
         assertEquals(1, vm.hexes.value.size)
         assertEquals("8a2a1072b59ffff", vm.hexes.value[0].h3)
+        assertEquals(bbox, repo.lastBbox)
+    }
+
+    @Test
+    fun geoJson_starts_empty_and_updates_after_setBoundingBox() = runTest {
+        val fc = """{"type":"FeatureCollection","features":[{"type":"Feature"}]}"""
+        val repo = FakeHexRepository(hexResult = emptyList(), geoJsonResult = fc)
+        val vm = MapViewModel(repo, this)
+
+        assertEquals("""{"type":"FeatureCollection","features":[]}""", vm.geoJson.value, "starts empty")
+
+        vm.setBoundingBox(bbox)
+        advanceUntilIdle()
+
+        assertEquals(fc, vm.geoJson.value, "geoJson must update after a bbox is set")
+        assertEquals(1, repo.geoJsonCalls, "the geojson fetch runs on the same trigger")
         assertEquals(bbox, repo.lastBbox)
     }
 

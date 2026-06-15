@@ -26,6 +26,9 @@ androidx-core = "1.13.1"
 mockito = "5.14.2"
 mockito-kotlin = "5.4.0"
 
+# MapLibre (M3.2 — coverage heatmap)
+maplibre-android = "11.5.2"
+
 # Android / Compose (M2.0 — Android collector + viewer)
 agp = "8.7.3"
 compose-multiplatform = "1.7.3"
@@ -100,6 +103,9 @@ androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
+
+# MapLibre (M3.2 — Android map SDK; AAR on mavenCentral, no API key)
+maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre-android" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

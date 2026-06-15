@@ -34,6 +34,8 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.room.ktx)
             implementation(libs.androidx.work)
+            // M3.2 — MapLibre map for the coverage heatmap.
+            implementation(libs.maplibre.android)
         }
         androidUnitTest.dependencies {
             implementation(kotlin("test"))

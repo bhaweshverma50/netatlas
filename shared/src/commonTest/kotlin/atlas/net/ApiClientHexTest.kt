@@ -106,6 +106,22 @@ class ApiClientHexTest {
     }
 
     @Test
+    fun getHexes_transport_failure_returns_empty_list() = runTest {
+        // Offline: the engine throws instead of responding. Must not propagate.
+        val engine = MockEngine { throw RuntimeException("offline") }
+        val api = ApiClient("http://example.test:8080", mockClient(engine))
+        val result = api.getHexes(77.0, 28.0, 78.0, 29.0)
+        assertTrue(result.isEmpty(), "transport failure must yield empty list, not throw")
+    }
+
+    @Test
+    fun getCarriers_transport_failure_returns_empty_list() = runTest {
+        val engine = MockEngine { throw RuntimeException("offline") }
+        val api = ApiClient("http://example.test:8080", mockClient(engine))
+        assertTrue(api.getCarriers().isEmpty(), "transport failure must yield empty list, not throw")
+    }
+
+    @Test
     fun getCarriers_parses_array() = runTest {
         var seenPath: String? = null
         val engine = MockEngine { request ->

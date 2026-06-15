@@ -37,5 +37,20 @@ open class HexRepository(private val api: ApiClient) {
             networkType = filter.networkType,
         )
 
+    /**
+     * Fetches the heatmap for [bbox] (filtered by [filter]) as a raw GeoJSON
+     * `FeatureCollection` string for MapLibre to render directly. Never throws.
+     */
+    open suspend fun hexesGeoJson(bbox: BoundingBox, filter: HexFilter = HexFilter()): String =
+        api.getHexesGeoJson(
+            minLng = bbox.minLng,
+            minLat = bbox.minLat,
+            maxLng = bbox.maxLng,
+            maxLat = bbox.maxLat,
+            mcc = filter.mcc,
+            mnc = filter.mnc,
+            networkType = filter.networkType,
+        )
+
     open suspend fun carriers(): List<Carrier> = api.getCarriers()
 }
