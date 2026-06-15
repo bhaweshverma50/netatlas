@@ -144,6 +144,7 @@ private fun hexesToGeoJson(hexes: List<HexAggregate>): String {
                             put("mcc", hex.mcc)
                             put("mnc", hex.mnc)
                             put("networkType", hex.networkType.name)
+                            put("source", hex.source.name)
                         }
                     },
                 )

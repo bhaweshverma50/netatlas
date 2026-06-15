@@ -33,6 +33,7 @@ data class HexAggregate(
     val sampleCount: Int, val meanDbm: Double, val medianDbm: Double,
     val stddev: Double, val confidence: Double,
     val coverageClass: CoverageClass, val centerLat: Double, val centerLng: Double,
+    val source: Source = Source.CROWD,
 )
 
 @Serializable
