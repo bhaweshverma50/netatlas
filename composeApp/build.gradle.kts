@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -62,6 +63,21 @@ dependencies {
     add("kspAndroid", libs.room.compiler)
 }
 
+// Release signing config for the POC.
+//
+// Credentials come from composeApp/keystore.properties when present (NOT committed); otherwise
+// we fall back to the documented POC literals. The keystore itself (composeApp/netatlas-release.keystore)
+// is gitignored, so a fresh clone won't have it — `hasReleaseKeystore` below guards that case and
+// lets the release build fall back to debug signing rather than failing.
+val keystorePropsFile = rootProject.file("composeApp/keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+}
+val releaseStoreFile = rootProject.file(
+    keystoreProps.getProperty("storeFile") ?: "composeApp/netatlas-release.keystore",
+)
+val hasReleaseKeystore = releaseStoreFile.exists()
+
 android {
     namespace = "atlas.netatlas"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -75,6 +91,32 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = releaseStoreFile
+                storePassword = keystoreProps.getProperty("storePassword") ?: "netatlas"
+                keyAlias = keystoreProps.getProperty("keyAlias") ?: "netatlas"
+                keyPassword = keystoreProps.getProperty("keyPassword") ?: "netatlas"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Keep minify OFF for the POC: kotlinx.serialization / Room / Ktor would need
+            // keep rules, which are out of scope here.
+            isMinifyEnabled = false
+            // Sign with the release config when the keystore is present; otherwise fall back
+            // to debug signing so anyone without the keystore can still build a runnable APK.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+        }
     }
 
     buildFeatures {

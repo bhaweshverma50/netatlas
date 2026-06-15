@@ -1,0 +1,17 @@
+# Keep the build context small. The image only needs the pre-built backend fat jar
+# and the SQL migrations (see backend/Dockerfile).
+.git
+.gradle
+.kotlin
+**/.gradle
+**/.kotlin
+composeApp
+iosApp
+shared/build
+docs
+*.apk
+*.aab
+*.keystore
+keystore.properties
+local.properties
+backend/db/data

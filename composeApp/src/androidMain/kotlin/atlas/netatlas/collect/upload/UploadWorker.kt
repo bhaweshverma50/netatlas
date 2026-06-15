@@ -8,7 +8,9 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import atlas.net.ServerUrl
 import atlas.net.defaultApiClient
+import atlas.netatlas.Settings
 import atlas.netatlas.collect.db.CollectorDb
 
 /**
@@ -30,9 +32,12 @@ class UploadWorker(
             DB_NAME,
         ).build()
         return try {
+            // Use the user-configured backend so uploads work on a real phone, not just
+            // the emulator. Falls back to BASE_URL if nothing has been saved yet.
+            val baseUrl = Settings(applicationContext).baseUrl
             val uploader = ReadingUploader(
                 dao = db.readingDao(),
-                api = defaultApiClient(BASE_URL),
+                api = defaultApiClient(baseUrl),
             )
             when (uploader.uploadPending()) {
                 ReadingUploader.Outcome.UPLOADED,
@@ -49,10 +54,10 @@ class UploadWorker(
         const val DB_NAME = "collector.db"
 
         /**
-         * Emulator → host alias. Fine as a POC constant; M2.4/M3 can make this
-         * configurable.
+         * Emulator → host alias. Kept as the fallback default; the URL is now
+         * user-configurable via [Settings] (see [doWork]).
          */
-        const val BASE_URL = "http://10.0.2.2:8080"
+        const val BASE_URL = ServerUrl.DEFAULT
 
         private const val UNIQUE_WORK_NAME = "netatlas-upload"
 

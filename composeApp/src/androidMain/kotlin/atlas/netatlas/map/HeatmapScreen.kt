@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -20,11 +21,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import atlas.map.FilterSelection
 import atlas.map.HexDetail
 import atlas.map.MapViewModel
+import atlas.net.ServerUrl
 import atlas.model.Carrier
 import atlas.model.CoverageClass
 import atlas.model.NetworkType
@@ -81,6 +85,8 @@ fun HeatmapScreen(
     contributionsFlow: Flow<Int>,
     onStartCollection: () -> Unit,
     onStopCollection: () -> Unit,
+    serverUrl: String,
+    onServerUrlChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val geoJson by viewModel.geoJson.collectAsState()
@@ -91,6 +97,7 @@ fun HeatmapScreen(
     var selection by remember { mutableStateOf(FilterSelection()) }
     var collecting by remember { mutableStateOf(false) }
     var tappedHex by remember { mutableStateOf<HexDetail?>(null) }
+    var showSettings by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     // Load the carrier list for the filter dropdown once.
@@ -121,6 +128,7 @@ fun HeatmapScreen(
                 carriers = carriers,
                 selection = selection,
                 onSelectionChange = ::applySelection,
+                onOpenSettings = { showSettings = true },
             )
             Legend()
             if (loading) {
@@ -158,6 +166,82 @@ fun HeatmapScreen(
             HexDetailSheet(detail = detail, carriers = carriers)
         }
     }
+
+    // Server-URL settings dialog.
+    if (showSettings) {
+        ServerUrlDialog(
+            currentUrl = serverUrl,
+            onDismiss = { showSettings = false },
+            onSave = { url ->
+                onServerUrlChange(url)
+                showSettings = false
+            },
+        )
+    }
+}
+
+/**
+ * Lets the user point the app at their own backend (the emulator alias only works on the
+ * emulator). Validates input through [ServerUrl.normalize]: on save it persists the
+ * normalized URL via [onSave]; an unparseable entry shows an inline error and keeps the
+ * dialog open. The current server is shown as the subtitle so users know where it points.
+ */
+@Composable
+private fun ServerUrlDialog(
+    currentUrl: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf(currentUrl) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Server URL") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Currently: $currentUrl",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        error = null
+                    },
+                    label = { Text("Backend address") },
+                    placeholder = { Text("e.g. 192.168.1.5:8080") },
+                    singleLine = true,
+                    isError = error != null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (error != null) {
+                    Text(
+                        text = error!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val normalized = ServerUrl.normalize(text)
+                if (normalized == null) {
+                    error = "Enter a valid http(s) address, e.g. 192.168.1.5:8080"
+                } else {
+                    onSave(normalized)
+                }
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,6 +250,7 @@ private fun FilterBar(
     carriers: List<Carrier>,
     selection: FilterSelection,
     onSelectionChange: (FilterSelection) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)),
@@ -176,6 +261,7 @@ private fun FilterBar(
                 .fillMaxWidth()
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // Carrier dropdown.
             FilterDropdown(
@@ -196,6 +282,11 @@ private fun FilterBar(
                 onSelect = { onSelectionChange(selection.copy(networkType = it)) },
                 modifier = Modifier.weight(1f),
             )
+            // Settings (server URL). A gear glyph keeps this dependency-free (no
+            // material-icons-extended), while reading as a settings affordance.
+            IconButton(onClick = onOpenSettings) {
+                Text("⚙", fontSize = 20.sp)
+            }
         }
     }
 }

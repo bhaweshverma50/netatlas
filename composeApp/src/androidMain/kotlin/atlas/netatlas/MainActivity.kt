@@ -12,6 +12,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.room.Room
@@ -27,14 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 class MainActivity : ComponentActivity() {
-
-    // 10.0.2.2 is the host loopback as seen from the Android emulator.
-    private val viewModel by lazy {
-        MapViewModel(
-            repo = HexRepository(defaultApiClient("http://10.0.2.2:8080")),
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
-        )
-    }
 
     // A read-only handle on the same Room DB the collector writes to, for the live
     // "Your contributions: N" count. Opened lazily; closed in onDestroy.
@@ -65,14 +62,35 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val settings = Settings(this)
         setContent {
             MaterialTheme {
+                // The base URL is user-configurable (10.0.2.2 only works on the emulator).
+                // Hold it in state; the ApiClient reads it per request via the provider below,
+                // so changing it re-points the heatmap + uploads without rebuilding the VM/map
+                // (which would otherwise lose the current bounding box).
+                var baseUrl by rememberSaveable { mutableStateOf(settings.baseUrl) }
+
+                val viewModel = remember {
+                    MapViewModel(
+                        repo = HexRepository(defaultApiClient { baseUrl }),
+                        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
+                    )
+                }
+
                 Scaffold { innerPadding ->
                     HeatmapScreen(
                         viewModel = viewModel,
                         contributionsFlow = db.readingDao().countFlow(),
                         onStartCollection = { requestPermissionsThenStart() },
                         onStopCollection = { CollectorService.stop(this) },
+                        serverUrl = baseUrl,
+                        onServerUrlChange = { newUrl ->
+                            settings.baseUrl = newUrl     // persists the normalized value
+                            baseUrl = settings.baseUrl    // provider now resolves the new server
+                            viewModel.refresh()           // reload the heatmap for the new server
+                            viewModel.loadCarriers()      // and refresh the carrier filter list
+                        },
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
