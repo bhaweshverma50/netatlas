@@ -400,12 +400,13 @@ class ReadingRepository(private val db: Database) {
 
         /**
          * Hard cap on the modeled k-ring radius per tower, keeping the response bounded.
-         * Raised from 4 to 7 so each tower's modeled patch is wider and neighboring
-         * towers' patches overlap into continuous coverage rather than isolated blobs.
-         * Note: the modeled cell count per tower grows ~k², so the response size grows
-         * with it — 7 stays comfortably bounded for the demo bbox/tower density.
+         * With real OpenCelliD density (thousands of towers across a city, only a few
+         * hundred metres apart) a small radius already overlaps into continuous coverage,
+         * so we keep this low — a wider radius would only balloon the response (cells per
+         * tower grow ~k²) without improving the map. (Was 7 when seeded with ~30 sparse
+         * sample towers; 3 suits real density.)
          */
-        const val MAX_K = 7
+        const val MAX_K = 3
 
         val INSERT_READING = """
             INSERT INTO signal_readings (
