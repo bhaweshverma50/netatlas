@@ -10,8 +10,13 @@ package atlas.net
  */
 object ServerUrl {
 
-    /** Emulator → host loopback alias. The sensible default for a fresh install / dev. */
-    const val DEFAULT: String = "http://10.0.2.2:8080"
+    /**
+     * Default backend for a fresh install: the deployed Cloud Run service (Mumbai),
+     * so the app shows the live crowdsourced heatmap out of the box. Users running the
+     * backend locally can override this via the in-app Server URL setting (e.g.
+     * `http://10.0.2.2:8080` for an emulator, or a LAN IP for a real device).
+     */
+    const val DEFAULT: String = "https://netatlas-backend-872879151769.asia-south1.run.app"
 
     // host[.host]* optionally :port, OR a bare IPv4[:port]. Deliberately conservative —
     // enough to reject "not a url" while accepting LAN IPs and DNS names the POC needs.

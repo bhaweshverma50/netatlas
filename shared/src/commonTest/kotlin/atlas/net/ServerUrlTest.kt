@@ -53,7 +53,9 @@ class ServerUrlTest {
     }
 
     @Test
-    fun default_is_emulator_alias() {
-        assertEquals("http://10.0.2.2:8080", ServerUrl.DEFAULT)
+    fun default_is_deployed_cloud_run_and_valid() {
+        assertEquals("https://netatlas-backend-872879151769.asia-south1.run.app", ServerUrl.DEFAULT)
+        // the default must itself survive normalization (no trailing slash, https scheme)
+        assertEquals(ServerUrl.DEFAULT, ServerUrl.normalize(ServerUrl.DEFAULT))
     }
 }
