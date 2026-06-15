@@ -46,10 +46,37 @@ collection from the app; do not treat these towers as accurate field data.
 
 ## Real data
 
-Real dumps require a free OpenCelliD API key. Register at
-[opencellid.org](https://www.opencellid.org/), then download the per-MCC CSV
-(e.g. MCC 404 for India). Large dumps go under `ingest-opencellid/data/`, which is
-git-ignored.
+Real towers require a free OpenCelliD API key — register at
+[opencellid.org](https://www.opencellid.org/). **Never commit the key**; pass it via
+the `OPENCELLID_TOKEN` environment variable. There are two ways to get data:
+
+### A) Area fetch (`fetch_area.py`) — fast, region-scoped
+Pulls real towers for a bounding box via the `cell/getInArea` API and writes a CSV in
+the importer's column order:
+
+```bash
+OPENCELLID_TOKEN=pk.xxxx python3 ingest-opencellid/fetch_area.py \
+    --bbox 12.86,77.50,13.08,77.72 --out /tmp/ocid-bengaluru.csv
+OPENCELLID_CSV=/tmp/ocid-bengaluru.csv ./gradlew :backend:importOpenCelliD   # + DB env
+```
+Free-tier limits make this the *quick* (not *complete*) option: `getInArea` caps each
+call at ~4 km² and 50 results, with **1000 requests/day**. The script tiles the bbox
+from the SW corner; if the daily quota runs out mid-run it stops and writes what it got,
+so a big city may come back partially covered — re-run the next day to fill the rest.
+
+### B) Bulk per-MCC download — complete, slower to obtain
+Download the whole country file (e.g. India = MCC 404), then filter to your area:
+```bash
+curl "https://opencellid.org/ocid/downloads?token=$OPENCELLID_TOKEN&type=mcc&file=404.csv.gz" -o data/404.csv.gz
+```
+The server **generates the file on first request** ("check back in an hour") and allows
+only **2 downloads/file/day**, so request it once and retry later. Gunzip, optionally
+filter to a bbox (cols 7/8 are lon/lat), and import. Large dumps go under
+`ingest-opencellid/data/` (git-ignored).
+
+> **Attribution:** OpenCelliD data is © OpenCelliD contributors, licensed
+> [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Downloaded data is
+> not committed to this repo.
 
 ## Usage
 
