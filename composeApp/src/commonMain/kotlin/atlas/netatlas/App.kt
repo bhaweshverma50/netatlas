@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -13,7 +14,10 @@ import androidx.compose.ui.Modifier
 import atlas.model.NetworkType
 
 @Composable
-fun App() {
+fun App(
+    onStartCollection: (() -> Unit)? = null,
+    onStopCollection: (() -> Unit)? = null,
+) {
     MaterialTheme {
         Scaffold { innerPadding ->
             Column(
@@ -32,6 +36,13 @@ fun App() {
                     text = "network types: " + NetworkType.entries.joinToString(),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                // M2.4 smoke-test hooks (Android wires these to CollectorService).
+                if (onStartCollection != null) {
+                    Button(onClick = onStartCollection) { Text("Start collection") }
+                }
+                if (onStopCollection != null) {
+                    Button(onClick = onStopCollection) { Text("Stop collection") }
+                }
             }
         }
     }

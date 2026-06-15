@@ -30,9 +30,15 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core)
             implementation(libs.room.runtime)
             implementation(libs.room.ktx)
             implementation(libs.androidx.work)
+        }
+        androidUnitTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.mockito.core)
+            implementation(libs.mockito.kotlin)
         }
         androidInstrumentedTest.dependencies {
             implementation(kotlin("test"))
@@ -71,6 +77,10 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
     compileOptions {

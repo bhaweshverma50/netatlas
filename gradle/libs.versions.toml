@@ -20,6 +20,11 @@ kotlinx-coroutines-test = "1.9.0"
 # WorkManager (M2.3 — upload worker)
 androidx-work = "2.10.0"
 
+# Android collector (M2.4)
+androidx-core = "1.13.1"
+mockito = "5.14.2"
+mockito-kotlin = "5.4.0"
+
 # Android / Compose (M2.0 — Android collector + viewer)
 agp = "8.7.3"
 compose-multiplatform = "1.7.3"
@@ -88,6 +93,11 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 # WorkManager (M2.3)
 androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidx-work" }
+
+# Android collector (M2.4)
+androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
