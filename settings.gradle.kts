@@ -16,4 +16,4 @@ dependencyResolutionManagement {
     }
 }
 
-include(":shared", ":backend")
+include(":shared", ":backend", ":composeApp")

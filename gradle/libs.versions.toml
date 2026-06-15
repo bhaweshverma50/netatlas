@@ -9,6 +9,15 @@ testcontainers = "1.21.3"
 logback = "1.5.12"
 junit = "5.11.3"
 
+# Android / Compose (M2.0 — Android collector + viewer)
+agp = "8.7.3"
+compose-multiplatform = "1.7.3"
+androidx-activity-compose = "1.9.3"
+androidx-lifecycle-viewmodel = "2.8.7"
+android-compileSdk = "35"
+android-minSdk = "29"
+android-targetSdk = "35"
+
 [libraries]
 # kotlinx
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -46,8 +55,16 @@ testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", ve
 # JUnit
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 
+# AndroidX
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle-viewmodel" }
+
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
