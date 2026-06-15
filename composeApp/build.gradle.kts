@@ -32,6 +32,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.room.runtime)
             implementation(libs.room.ktx)
+            implementation(libs.androidx.work)
         }
         androidInstrumentedTest.dependencies {
             implementation(kotlin("test"))
@@ -40,6 +41,9 @@ kotlin {
             implementation(libs.androidx.test.ext.junit)
             implementation(libs.room.testing)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
         }
     }
 }
