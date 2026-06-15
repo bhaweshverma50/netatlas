@@ -13,6 +13,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import atlas.map.BoundingBox
+import atlas.map.HexDetail
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
@@ -51,19 +52,22 @@ private const val INITIAL_ZOOM = 11.0
  * `coverageClass` and `confidence`); the fill layer colors hexagons by coverage and scales
  * opacity by confidence. Whenever [geoJson] changes the source is updated in place. On every
  * camera-idle the visible bounds are reported through [onBoundsChanged] so the caller can
- * refetch — this is what drives the [atlas.map.MapViewModel].
+ * refetch — this is what drives the [atlas.map.MapViewModel]. A tap on a hexagon reports the
+ * parsed [HexDetail] through [onHexTapped] (or `null` when the tap misses every hex).
  */
 @Composable
 fun MapScreen(
     geoJson: String,
     onBoundsChanged: (BoundingBox) -> Unit,
     modifier: Modifier = Modifier,
+    onHexTapped: (HexDetail?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Keep the latest callback without re-creating the MapView when it changes.
+    // Keep the latest callbacks without re-creating the MapView when they change.
     val currentOnBoundsChanged by rememberUpdatedState(onBoundsChanged)
+    val currentOnHexTapped by rememberUpdatedState(onHexTapped)
 
     // MapLibre must be initialised before any MapView is inflated.
     val mapView = remember {
@@ -111,6 +115,16 @@ fun MapScreen(
 
                 map.addOnCameraIdleListener {
                     currentOnBoundsChanged(map.visibleBoundingBox())
+                }
+
+                // Tap a hexagon -> query the fill layer at the tapped screen point and
+                // surface the parsed detail (or null when nothing is hit).
+                map.addOnMapClickListener { point ->
+                    val screenPoint = map.projection.toScreenLocation(point)
+                    val features = map.queryRenderedFeatures(screenPoint, FILL_LAYER_ID)
+                    val detail = features.firstNotNullOfOrNull { it.toHexDetail() }
+                    currentOnHexTapped(detail)
+                    detail != null // consume the event only when a hex was actually hit
                 }
             }
             mapView

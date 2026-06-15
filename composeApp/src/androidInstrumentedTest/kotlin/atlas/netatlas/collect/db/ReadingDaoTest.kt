@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import atlas.model.NetworkType
 import atlas.model.SignalReading
 import atlas.model.Source
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -82,6 +83,20 @@ class ReadingDaoTest {
         )
         assertEquals(3, dao.count())
         assertEquals(3, dao.unsentCount())
+    }
+
+    @Test
+    fun countFlow_emits_the_current_count() = runTest {
+        assertEquals(0, dao.countFlow().first())
+
+        dao.insertAll(
+            listOf(
+                ReadingEntity.fromSignalReading(reading(deviceId = "f1")),
+                ReadingEntity.fromSignalReading(reading(deviceId = "f2")),
+            )
+        )
+
+        assertEquals(2, dao.countFlow().first())
     }
 
     @Test
