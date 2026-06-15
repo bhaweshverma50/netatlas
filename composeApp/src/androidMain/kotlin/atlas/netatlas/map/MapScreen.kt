@@ -36,8 +36,12 @@ private const val SOURCE_ID = "hexes"
 private const val FILL_LAYER_ID = "hex-fill"
 private const val LINE_LAYER_ID = "hex-outline"
 
-/** Free MapLibre demo vector tiles — no API key required. */
-private const val STYLE_URL = "https://demotiles.maplibre.org/style.json"
+/**
+ * CARTO Positron — a free, no-API-key vector basemap with real streets, labels, water
+ * and parks. A muted light backdrop so the coverage hexes stay readable on top.
+ * (Swap to voyager-gl-style for a colorful map or dark-matter-gl-style for dark mode.)
+ */
+private const val STYLE_URL = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
 
 private const val EMPTY_FC = """{"type":"FeatureCollection","features":[]}"""
 
