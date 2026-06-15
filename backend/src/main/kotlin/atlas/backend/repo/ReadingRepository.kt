@@ -398,8 +398,14 @@ class ReadingRepository(private val db: Database) {
         /** Approx. H3 resolution-10 edge length (m); used to size the modeled k-ring patch. */
         const val HEX_EDGE_M = 65.0
 
-        /** Hard cap on the modeled k-ring radius per tower, keeping the response bounded. */
-        const val MAX_K = 4
+        /**
+         * Hard cap on the modeled k-ring radius per tower, keeping the response bounded.
+         * Raised from 4 to 7 so each tower's modeled patch is wider and neighboring
+         * towers' patches overlap into continuous coverage rather than isolated blobs.
+         * Note: the modeled cell count per tower grows ~k², so the response size grows
+         * with it — 7 stays comfortably bounded for the demo bbox/tower density.
+         */
+        const val MAX_K = 7
 
         val INSERT_READING = """
             INSERT INTO signal_readings (

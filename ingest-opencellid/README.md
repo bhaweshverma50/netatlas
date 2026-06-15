@@ -34,10 +34,15 @@ column count, non-numeric fields, or out-of-range lat/lng) are skipped silently.
 
 ## Sample data
 
-`sample-bengaluru.csv` contains ~12 realistic towers across Bengaluru
-(`mcc=404`, Airtel `mnc=45` + Jio `mnc=10`, mostly LTE with a couple NR). Several
-sit away from the seeded demo route (~12.935,77.625 → 13.010,77.555) so they
-produce modeled coverage where there is no crowd data.
+`sample-bengaluru.csv` contains ~30 illustrative towers spread across the
+Bengaluru bounding box (~12.85–13.10 N, 77.50–77.70 E): `mcc=404`, Airtel
+`mnc=45` + Jio `mnc=10`, a mix of LTE and NR, with ranges 1000–3000 m. They are
+deliberately spaced so each tower's modeled k-ring overlaps its neighbours and
+the demo reads as broad, continuous coverage rather than isolated patches.
+
+This is **sample data only** — hand-placed to make the demo look complete. Real
+coverage density comes from real OpenCelliD downloads (see below) plus crowd
+collection from the app; do not treat these towers as accurate field data.
 
 ## Real data
 

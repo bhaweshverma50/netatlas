@@ -106,7 +106,34 @@ fun MapScreen(
 
     AndroidView(
         factory = {
+            // Touch interop: while the user is interacting with the map, stop the parent
+            // Compose view hierarchy from intercepting the gesture. Without this, horizontal
+            // pans and multi-touch (pinch) gestures get stolen by ancestor scroll handling,
+            // leaving only vertical single-finger panning working. We never consume the
+            // event (return false) so MapLibre's own gesture detector still handles it.
+            mapView.setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN,
+                    android.view.MotionEvent.ACTION_POINTER_DOWN ->
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL ->
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+                false
+            }
+
             mapView.getMapAsync { map ->
+                // Explicitly enable every gesture (don't rely on defaults).
+                map.uiSettings.apply {
+                    isScrollGesturesEnabled = true
+                    isZoomGesturesEnabled = true
+                    isRotateGesturesEnabled = true
+                    isTiltGesturesEnabled = true
+                    isDoubleTapGesturesEnabled = true
+                    isQuickZoomGesturesEnabled = true
+                }
+
                 map.cameraPosition = CameraPosition.Builder()
                     .target(INITIAL_TARGET)
                     .zoom(INITIAL_ZOOM)
