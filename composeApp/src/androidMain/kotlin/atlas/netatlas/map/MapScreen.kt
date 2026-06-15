@@ -21,6 +21,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression.color
+import org.maplibre.android.style.expressions.Expression.eq
 import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.expressions.Expression.interpolate
 import org.maplibre.android.style.expressions.Expression.linear
@@ -35,6 +36,7 @@ import org.maplibre.android.style.sources.GeoJsonSource
 private const val SOURCE_ID = "hexes"
 private const val FILL_LAYER_ID = "hex-fill"
 private const val LINE_LAYER_ID = "hex-outline"
+private const val LINE_LAYER_MODELED_ID = "hex-outline-modeled"
 
 /**
  * CARTO Positron — a free, no-API-key vector basemap with real streets, labels, water
@@ -149,7 +151,14 @@ private class StyleHolder {
     var pendingGeoJson: String = EMPTY_FC
 }
 
-/** Installs the GeoJSON source, the coverage-colored fill layer, and a thin outline. */
+/**
+ * Installs the GeoJSON source, the coverage-colored fill layer, and the outlines.
+ *
+ * Two outline layers distinguish provenance at a glance: crowd-sourced hexes
+ * (`source == "CROWD"`) get a solid dark stroke, while modeled OpenCelliD estimates
+ * (`source == "OPENCELLID"`) get a muted dashed stroke. The fill itself already reads as
+ * faint for modeled hexes because opacity scales with their low confidence.
+ */
 private fun setupHexLayers(style: Style) {
     style.addSource(GeoJsonSource(SOURCE_ID, EMPTY_FC))
 
@@ -176,14 +185,24 @@ private fun setupHexLayers(style: Style) {
         ),
     )
 
+    // Solid outline for measured (crowd-sourced) hexes.
     val lineLayer = LineLayer(LINE_LAYER_ID, SOURCE_ID).withProperties(
         PropertyFactory.lineColor(android.graphics.Color.parseColor("#37474f")),
         PropertyFactory.lineWidth(0.6f),
         PropertyFactory.lineOpacity(0.5f),
-    )
+    ).withFilter(eq(get("source"), literal("CROWD")))
+
+    // Dashed, muted outline for modeled (OpenCelliD) hexes — reads as an estimate.
+    val modeledLineLayer = LineLayer(LINE_LAYER_MODELED_ID, SOURCE_ID).withProperties(
+        PropertyFactory.lineColor(android.graphics.Color.parseColor("#78909c")),
+        PropertyFactory.lineWidth(0.5f),
+        PropertyFactory.lineOpacity(0.6f),
+        PropertyFactory.lineDasharray(arrayOf(2f, 2f)),
+    ).withFilter(eq(get("source"), literal("OPENCELLID")))
 
     style.addLayer(fillLayer)
     style.addLayer(lineLayer)
+    style.addLayer(modeledLineLayer)
 }
 
 /** Visible map window as our [BoundingBox] (lng/lat order matches the backend query). */

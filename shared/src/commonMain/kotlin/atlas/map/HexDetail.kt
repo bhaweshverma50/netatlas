@@ -2,6 +2,7 @@ package atlas.map
 
 import atlas.model.CoverageClass
 import atlas.model.NetworkType
+import atlas.model.Source
 
 /**
  * The per-hex coverage detail shown when a hexagon is tapped on the map.
@@ -20,6 +21,13 @@ data class HexDetail(
     val mcc: Int,
     val mnc: Int,
     val networkType: NetworkType,
+    /**
+     * Where this hex's coverage came from: real crowd-sourced measurements ([Source.CROWD])
+     * or a modeled estimate near a known tower ([Source.OPENCELLID], `sampleCount == 0`).
+     * Defaults to [Source.CROWD] so older feature payloads without a `source` property stay
+     * back-compatible.
+     */
+    val source: Source = Source.CROWD,
 ) {
     companion object {
         /**
@@ -27,8 +35,9 @@ data class HexDetail(
          *
          * Returns `null` if a required key is missing or a numeric value is malformed, so the
          * caller can simply skip showing a sheet. Unknown enum values degrade safely rather
-         * than throwing: an unknown coverage class becomes [CoverageClass.NO_SIGNAL] and an
-         * unknown network type becomes [NetworkType.UNKNOWN].
+         * than throwing: an unknown coverage class becomes [CoverageClass.NO_SIGNAL], an
+         * unknown network type becomes [NetworkType.UNKNOWN], and a missing/unknown source
+         * becomes [Source.CROWD].
          */
         fun fromProperties(props: Map<String, String>): HexDetail? {
             val h3 = props["h3"] ?: return null
@@ -44,6 +53,10 @@ data class HexDetail(
             val networkType = props["networkType"]?.let { name ->
                 NetworkType.entries.firstOrNull { it.name == name }
             } ?: NetworkType.UNKNOWN
+            // Missing or unrecognized source degrades to crowd-sourced (back-compat).
+            val source = props["source"]?.let { name ->
+                Source.entries.firstOrNull { it.name == name }
+            } ?: Source.CROWD
 
             return HexDetail(
                 h3 = h3,
@@ -55,6 +68,7 @@ data class HexDetail(
                 mcc = mcc,
                 mnc = mnc,
                 networkType = networkType,
+                source = source,
             )
         }
     }
