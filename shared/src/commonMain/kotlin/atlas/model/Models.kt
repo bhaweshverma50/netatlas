@@ -34,3 +34,6 @@ data class HexAggregate(
     val stddev: Double, val confidence: Double,
     val coverageClass: CoverageClass, val centerLat: Double, val centerLng: Double,
 )
+
+@Serializable
+data class Carrier(val mcc: Int, val mnc: Int, val carrierName: String)
