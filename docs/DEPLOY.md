@@ -11,6 +11,22 @@ Android app ──HTTPS──> Cloud Run (Ktor container) ──JDBC──> Supa
     via the in-app gear)
 ```
 
+## Current deployment
+
+| | |
+|---|---|
+| **Service** | `https://netatlas-backend-872879151769.asia-south1.run.app` (Cloud Run, `asia-south1`) |
+| **GCP project** | `validatyr-2026` |
+| **Database** | Reuses the `validatyr` Supabase project (`qgdpnxbmomnjlezfsabu`) — netatlas lives in an **isolated `netatlas` schema** owned by a dedicated `netatlas_app` role, with no access to validatyr's tables. Validatyr connects via Supabase API keys (PostgREST), so it's unaffected. |
+| **Connection** | Session pooler `aws-1-ap-south-1.pooler.supabase.com:5432`, user `netatlas_app.<ref>`, `sslmode=require`. The DB password lives only in the Cloud Run env vars (never committed). |
+
+> Why schema-reuse instead of a dedicated Supabase project: the free tier caps an account
+> at 2 active projects, which was already full. The dedicated-schema approach keeps it free
+> and isolated. To split it out later, create a new Supabase project and re-run the migrations.
+>
+> Health-check note: `/healthz` may be intercepted by some corporate networks (a common
+> probe path) — use `/carriers` or `/hexes?...` to verify the service instead.
+
 ## Prerequisites
 - `gcloud` authenticated (`gcloud auth login`) on a project with **billing enabled**.
 - Docker running (the image is built locally and pushed — Cloud Run runs `linux/amd64`,
