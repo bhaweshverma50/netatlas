@@ -10,6 +10,7 @@ local.properties
 *.apk
 *.aab
 *.keystore
+keystore.properties
 captures/
 
 # Xcode / iOS

@@ -24,10 +24,21 @@ import kotlinx.coroutines.CancellationException
  * on Android, a MockEngine in tests). The client must be configured with
  * `expectSuccess = false` so non-2xx responses are inspected here rather than thrown.
  */
-class ApiClient(baseUrl: String, private val http: HttpClient) {
+class ApiClient private constructor(
+    private val baseUrlProvider: () -> String,
+    private val http: HttpClient,
+) {
 
-    // Drop a single trailing slash so we never build "$baseUrl//readings".
-    private val baseUrl: String = baseUrl.trimEnd('/')
+    /**
+     * Fixed-base-URL client. The URL is resolved once; a trailing slash is dropped so we
+     * never build "$baseUrl//readings".
+     */
+    constructor(baseUrl: String, http: HttpClient) : this({ baseUrl }, http)
+
+    // Resolved per request and trailing-slash-trimmed, so a mutable provider (used on
+    // Android to re-point at a user-entered server without rebuilding the client) takes
+    // effect on the next call. For the fixed-URL constructor this is simply constant.
+    private val baseUrl: String get() = baseUrlProvider().trimEnd('/')
 
     /**
      * POSTs [batch] to `/readings`.
@@ -124,5 +135,13 @@ class ApiClient(baseUrl: String, private val http: HttpClient) {
     companion object {
         /** Valid empty GeoJSON returned whenever a hex fetch fails (offline or non-2xx). */
         const val EMPTY_FEATURE_COLLECTION: String = """{"type":"FeatureCollection","features":[]}"""
+
+        /**
+         * Builds a client whose base URL is read from [baseUrlProvider] on every request.
+         * Lets callers re-point the client at a new server (e.g. a user-entered URL) without
+         * rebuilding it or losing any downstream state.
+         */
+        fun withProvider(baseUrlProvider: () -> String, http: HttpClient): ApiClient =
+            ApiClient(baseUrlProvider, http)
     }
 }
